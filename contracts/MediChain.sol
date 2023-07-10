@@ -3,13 +3,12 @@ pragma solidity ^0.8.17;
 
 contract MediChain {
     struct Record {
-        uint256 id;
-        string data;
+        string recordData;
         address owner;
-        mapping(address => bool) access;
     }
 
     mapping(uint256 => Record) private records;
+    mapping(uint256 => mapping(address => bool)) private recordAccess;
     uint256 private recordCount;
 
     event RecordCreated(uint256 indexed recordId, address indexed owner);
@@ -25,9 +24,9 @@ contract MediChain {
         _;
     }
 
-    function createRecord(string memory _data) public {
+    function createRecord(string memory _recordData) public {
         recordCount++;
-        records[recordCount] = Record(recordCount, _data, msg.sender);
+        records[recordCount] = Record(_recordData, msg.sender);
         emit RecordCreated(recordCount, msg.sender);
     }
 
@@ -35,7 +34,7 @@ contract MediChain {
         public
         onlyRecordOwner(recordId)
     {
-        records[recordId].access[user] = true;
+        recordAccess[recordId][user] = true;
         emit RecordAccessGranted(recordId, user);
     }
 
@@ -43,33 +42,24 @@ contract MediChain {
         public
         onlyRecordOwner(recordId)
     {
-        records[recordId].access[user] = false;
+        recordAccess[recordId][user] = false;
         emit RecordAccessRevoked(recordId, user);
     }
 
-    function updateRecord(uint256 recordId, string memory _data)
+    function updateRecord(uint256 recordId, string memory _recordData)
         public
         onlyRecordOwner(recordId)
     {
-        records[recordId].data = _data;
+        records[recordId].recordData = _recordData;
         emit RecordUpdated(recordId, msg.sender);
     }
 
-    function getRecord(uint256 recordId)
-        public
-        view
-        returns (
-            uint256,
-            string memory,
-            address
-        )
-    {
+    function getRecord(uint256 recordId) public view returns (string memory) {
         require(
             records[recordId].owner == msg.sender ||
-                records[recordId].access[msg.sender],
+                recordAccess[recordId][msg.sender],
             "Unauthorized access to record"
         );
-        Record memory record = records[recordId];
-        return (record.id, record.data, record.owner);
+        return records[recordId].recordData;
     }
 }
